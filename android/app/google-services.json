@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "824052414230",
+    "project_id": "ebl-bank-d04b4",
+    "storage_bucket": "ebl-bank-d04b4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:824052414230:android:d816b1e9611992b037c237",
+        "android_client_info": {
+          "package_name": "com.example.ebl_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBoPZIJwsgescKO-bI_HpkRkQ01WJuXef8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
