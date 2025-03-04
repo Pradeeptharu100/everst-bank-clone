@@ -1,47 +1,70 @@
-name: Flutter CI/CD with Firebase
+name: Flutter CI
 
+# Controls when the workflow will run
 on:
+  # Triggers the workflow on push or pull request events for main branch
   push:
-    branches:
-      - main # or your preferred branch for CI/CD deployment
+    branches: [master]
+  pull_request:
+    branches: [master]
 
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs
 jobs:
   build:
+    # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
+    # Steps represent a sequence of tasks that will be executed
     steps:
-      # Checkout the code
-      - name: Checkout code
-        uses: actions/checkout@v3
+      # Checks out your repository under $GITHUB_WORKSPACE
+      - uses: actions/checkout@v3
+
+      # Set up Java (required for Android builds)
+      - uses: actions/setup-java@v3
+        with:
+          java-version: "17"
+          distribution: "temurin"
 
       # Set up Flutter
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.7.1" # Use the desired Flutter version
+          flutter-version: "3.19.x" # Specify your desired Flutter version
+          channel: "stable"
+          cache: true
 
-      # Install dependencies using flutter pub get
+      # Get Flutter dependencies
       - name: Install dependencies
-        run: |
-          flutter pub get  # This is the correct command for Flutter projects
+        run: flutter pub get
 
-      # Run Flutter tests (optional but recommended)
-      - name: Run Flutter tests
-        run: |
-          flutter test
+      # Run Flutter analyzer
+      - name: Analyze code
+        run: flutter analyze
 
-      # Build the app
-      - name: Build Flutter App (Release)
-        run: |
-          flutter build apk --release # Or for iOS: flutter build ios --release
+      # Run tests
+      - name: Run tests
+        run: flutter test
 
-      # Set up Firebase CLI
-      - name: Set up Firebase CLI
-        uses: wzieba/Firebase-CLI-Github-Action@v2
+      # Build APK (for Android)
+      - name: Build APK
+        run: flutter build apk --release --split-per-abi
+
+      # Optional: Upload the APK as an artifact
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
         with:
-          firebase_token: ${{ secrets.FIREBASE_AUTH_TOKEN }} # Add your Firebase Auth Token in GitHub secrets
+          name: app-release
+          path: build/app/outputs/flutter-apk/*.apk
 
-      # Deploy to Firebase Hosting (for web app)
-      - name: Deploy to Firebase Hosting (Web)
-        run: |
-          firebase deploy --only hosting --token ${{ secrets.FIREBASE_AUTH_TOKEN }}
+      # Optional: Build app bundle (for Google Play)
+      - name: Build App Bundle
+        run: flutter build appbundle --release
+
+      # Optional: Upload the AAB as an artifact
+      - name: Upload App Bundle
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-bundle
+          path: build/app/outputs/bundle/release/*.aab
