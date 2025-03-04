@@ -1,0 +1,90 @@
+name: Flutter CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - master # Trigger on pushes to the master branch
+  pull_request:
+    branches:
+      - master # Trigger on pull requests targeting the master branch
+
+jobs:
+  test:
+    name: Run Flutter Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set Up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.27.1" # Specify your Flutter version here
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Analyze Code
+        run: flutter analyze
+
+      - name: Run Unit and Widget Tests
+        run: flutter test
+
+  build:
+    name: Build Flutter App
+    needs: test # Ensure tests pass before building
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set Up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.27.1"
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build Android APK
+        run: flutter build apk --release
+
+      - name: Build iOS App (Optional)
+        if: github.event_name == 'push' # Only build iOS on push events
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          flutter build ios --release --no-codesign
+
+      - name: Archive Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: release-build
+          path: build/app/outputs/apk/release/app-release.apk
+
+  deploy:
+    name: Deploy to Firebase App Distribution
+    needs: build # Ensure the build job completes successfully
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: release-build
+          path: build/app/outputs/apk/release
+
+      - name: Set Up Firebase CLI
+        uses: FirebaseExtended/action-setup-firebase@v1
+        with:
+          firebase_token: ${{ secrets.FIREBASE_TOKEN }}
+
+      - name: Deploy to Firebase App Distribution
+        run: |
+          firebase appdistribution:distribute build/app/outputs/apk/release/app-release.apk \
+            --app ${{ secrets.FIREBASE_APP_ID }} \
+            --groups testers
