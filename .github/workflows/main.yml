@@ -2,82 +2,51 @@ name: Flutter CI/CD with Firebase
 
 on:
   push:
-    branches: ["main", "develop", "master"]
-  pull_request:
-    branches: ["main", "develop", "master"]
+    branches:
+      - master # or your preferred branch for CI/CD deployment
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      # Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      # Setup Java environment
-      - name: Set up Java
-        uses: actions/setup-java@v2
-        with:
-          distribution: "zulu"
-          java-version: "11"
-
-      # Setup Flutter environment
+      # Set up Flutter
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.16.0"
-          channel: "stable"
+          flutter-version: "3.7.0" # Use the desired Flutter version
 
-      # Cache pub dependencies
-      - name: Cache pub dependencies
-        uses: actions/cache@v2
-        with:
-          path: ${{ env.PUB_CACHE }}
-          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: ${{ runner.os }}-pub-
-
-      # Get dependencies
+      # Install dependencies
       - name: Install dependencies
-        run: flutter pub get
-
-      # Analyze code
-      - name: Analyze code
-        run: flutter analyze
-
-      # Run tests
-      - name: Run tests
-        run: flutter test
-
-      # Build APK
-      - name: Build APK
-        run: flutter build apk --release
-
-      # Setup Firebase CLI
-      - name: Setup Firebase CLI
         run: |
-          curl -sL https://firebase.tools | bash
-          firebase login:ci
+          flutter pub get
 
-      # Deploy to Firebase (only on main branch)
-      - name: Deploy to Firebase
-        if: github.ref == 'refs/heads/main'
+      # Run Flutter tests (optional but recommended)
+      - name: Run Flutter tests
         run: |
-          firebase deploy --token ${{ secrets.FIREBASE_TOKEN }}
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          flutter test
 
-      # Upload APK artifact
-      - name: Upload APK
-        uses: actions/upload-artifact@v2
-        with:
-          name: release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+      # Build the app
+      - name: Build Flutter App (Release)
+        run: |
+          flutter build apk --release # Or for iOS: flutter build ios --release
 
-      # Create GitHub Release (optional)
-      - name: Create Release
-        if: github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v1
+      # Set up Firebase CLI
+      - name: Set up Firebase CLI
+        uses: wzieba/Firebase-CLI-Github-Action@v2
         with:
-          files: build/app/outputs/flutter-apk/app-release.apk
-          tag_name: v1.0.${{ github.run_number }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          firebase_token: ${{ secrets.FIREBASE_AUTH_TOKEN }} # Add your Firebase Auth Token in GitHub secrets
+
+      # Deploy to Firebase Hosting (for web app)
+      - name: Deploy to Firebase Hosting (Web)
+        run: |
+          firebase deploy --only hosting --token ${{ secrets.FIREBASE_AUTH_TOKEN }}
+
+      # Optionally: Deploy to Firebase Cloud Functions or Firebase Firestore (modify as needed)
+      # - name: Deploy Firebase Functions (if using functions)
+      #   run: |
+      #     firebase deploy --only functions --token ${{ secrets.FIREBASE_AUTH_TOKEN }}
