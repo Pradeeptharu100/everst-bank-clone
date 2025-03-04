@@ -1,80 +1,30 @@
-name: Flutter CI/CD Pipeline
-
+name: build-android-app
 on:
   push:
     branches:
-      - master # Trigger on pushes to the master branch
-  pull_request:
-    branches:
-      - master # Trigger on pull requests targeting the master branch
-
-env:
-  FLUTTER_VERSION: "3.27.1"
-  FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
-  FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-
+      - "internal/*"
 jobs:
   build:
-    name: Build Flutter App
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: ./android
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      - name: Cache Flutter Dependencies
-        uses: actions/cache@v3
+      - uses: actions/checkout@v2
+      - name: Setup Java
+        uses: actions/setup-java@v2
         with:
-          path: ~/.pub-cache
-          key: flutter-pub-cache-${{ hashFiles('pubspec.lock') }}
-          restore-keys: |
-            flutter-pub-cache-
+          java-version: 11
+          distribution: "adopt"
 
-      - name: Set Up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-
-      - name: Clean Project
-        run: flutter clean
-
-      - name: Install Dependencies
-        run: flutter pub get
-
-      - name: Analyze Code
-        run: flutter analyze
-
-      - name: Build Android APK
-        run: flutter build apk --release
-
-      - name: Archive Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-build
-          path: build/app/outputs/apk/release/app-release.apk
-
-  deploy:
-    name: Deploy to Firebase App Distribution
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      - name: Download Build Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: release-build
-          path: build/app/outputs/apk/release
-
-      - name: Set Up Firebase CLI
-        uses: FirebaseExtended/action-setup-firebase@v1
-        with:
-          firebase_token: ${{ env.FIREBASE_TOKEN }}
-
-      - name: Deploy to Firebase App Distribution
+      - name: Download Gradle
         run: |
-          firebase appdistribution:distribute build/app/outputs/apk/release/app-release.apk \
-            --app ${{ env.FIREBASE_APP_ID }} \
-            --groups testers
+          curl -s https://get.gradle.com/ | sh
+          export PATH=$PATH:/home/runner/gradle-8.0/bin
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v1
+        with:
+          flutter-version: "3.27.1"
+      - run: fastlane alpha
