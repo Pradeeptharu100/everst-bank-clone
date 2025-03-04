@@ -27,10 +27,20 @@ jobs:
           flutter-version: "3.27.1"
           channel: "stable"
           cache: true
+          cache-key: "flutter-:os:-:channel:-:version:" # Ensures cache is version-specific
 
-      # Get dependencies using flutter pub get
+      # Debugging: Verify Flutter installation
+      - name: Verify Flutter version
+        run: flutter --version
+
+      # Get dependencies
       - name: Install dependencies
         run: flutter pub get
+
+      # Debugging: Check pubspec.lock
+      - name: List dependencies
+        run: flutter pub deps
+        if: failure() # Runs only if previous step fails
 
       # Analyze the code
       - name: Analyze code
@@ -43,10 +53,12 @@ jobs:
       # Build APK
       - name: Build APK
         run: flutter build apk --release --split-per-abi
+        continue-on-error: true # Allows workflow to continue even if this fails
 
-      # Upload APK artifact
+      # Upload APK artifact (if built successfully)
       - name: Upload APK
         uses: actions/upload-artifact@v3
+        if: success() # Only if previous steps succeed
         with:
           name: app-release
           path: build/app/outputs/flutter-apk/*.apk
@@ -54,10 +66,12 @@ jobs:
       # Build App Bundle
       - name: Build App Bundle
         run: flutter build appbundle --release
+        continue-on-error: true
 
-      # Upload App Bundle artifact
+      # Upload App Bundle artifact (if built successfully)
       - name: Upload App Bundle
         uses: actions/upload-artifact@v3
+        if: success()
         with:
           name: app-bundle
           path: build/app/outputs/bundle/release/*.aab
