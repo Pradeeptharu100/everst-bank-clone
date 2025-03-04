@@ -1,77 +1,88 @@
-name: Flutter CI
+name: Flutter CI/CD
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      # Checkout the repository
       - uses: actions/checkout@v3
 
-      # Setup Java for Android builds
-      - uses: actions/setup-java@v3
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
-          java-version: "17"
-          distribution: "temurin"
-
-      # Setup Flutter with specific version 3.27.1
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: "3.27.1"
+          flutter-version: "3.19.0"
           channel: "stable"
           cache: true
-          cache-key: "flutter-:os:-:channel:-:version:" # Ensures cache is version-specific
 
-      # Debugging: Verify Flutter installation
-      - name: Verify Flutter version
-        run: flutter --version
-
-      # Get dependencies
       - name: Install dependencies
         run: flutter pub get
 
-      # Debugging: Check pubspec.lock
-      - name: List dependencies
-        run: flutter pub deps
-        if: failure() # Runs only if previous step fails
-
-      # Analyze the code
-      - name: Analyze code
+      - name: Analyze project source
         run: flutter analyze
 
-      # Run tests
       - name: Run tests
         run: flutter test
 
-      # Build APK
       - name: Build APK
-        run: flutter build apk --release --split-per-abi
-        continue-on-error: true # Allows workflow to continue even if this fails
+        run: flutter build apk --release
 
-      # Upload APK artifact (if built successfully)
       - name: Upload APK
         uses: actions/upload-artifact@v3
-        if: success() # Only if previous steps succeed
         with:
-          name: app-release
-          path: build/app/outputs/flutter-apk/*.apk
+          name: release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
 
-      # Build App Bundle
-      - name: Build App Bundle
-        run: flutter build appbundle --release
-        continue-on-error: true
+      - name: Build Web
+        run: flutter build web --release
 
-      # Upload App Bundle artifact (if built successfully)
-      - name: Upload App Bundle
+      - name: Upload Web Build
         uses: actions/upload-artifact@v3
-        if: success()
         with:
-          name: app-bundle
-          path: build/app/outputs/bundle/release/*.aab
+          name: web-build
+          path: build/web
+
+  deploy-web:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Web Build
+        uses: actions/download-artifact@v3
+        with:
+          name: web-build
+          path: web-build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./web-build
+
+  deploy-android:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download APK
+        uses: actions/download-artifact@v3
+        with:
+          name: release-apk
+          path: apk
+
+      # Optional: Deploy to Google Play Store
+      # You would need to set up proper credentials and use a plugin like r0adkll/upload-google-play
+      - name: Upload to Google Play
+        run: echo "To deploy to Google Play, add the r0adkll/upload-google-play action with proper credentials"
+        # Uncomment and configure when ready to deploy to Play Store
+        # uses: r0adkll/upload-google-play@v1
+        # with:
+        #   serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
+        #   packageName: com.yourcompany.yourapp
+        #   releaseFiles: apk/app-release.apk
+        #   track: production
+        #   status: completed
