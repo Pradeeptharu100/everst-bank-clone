@@ -3,7 +3,7 @@ name: Flutter CI/CD with Firebase
 on:
   push:
     branches:
-      - master # or your preferred branch for CI/CD deployment
+      - main # or your preferred branch for CI/CD deployment
 
 jobs:
   build:
@@ -46,7 +46,9 @@ jobs:
         run: |
           firebase deploy --only hosting --token ${{ secrets.FIREBASE_AUTH_TOKEN }}
 
-      # Optionally: Deploy to Firebase Cloud Functions or Firebase Firestore (modify as needed)
-      # - name: Deploy Firebase Functions (if using functions)
-      #   run: |
-      #     firebase deploy --only functions --token ${{ secrets.FIREBASE_AUTH_TOKEN }}
+      # Optional: Run Git cleanup commands explicitly (if necessary)
+      - name: Git Cleanup
+        run: |
+          git config --global --unset-all core.sshCommand
+          git config --global --unset-all http.https://github.com/.extraheader
+          git config --global --remove-section user
