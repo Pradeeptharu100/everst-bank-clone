@@ -20,10 +20,10 @@ jobs:
         with:
           flutter-version: "3.7.0" # Use the desired Flutter version
 
-      # Install dependencies
+      # Install dependencies using flutter pub get
       - name: Install dependencies
         run: |
-          flutter pub get
+          flutter pub get  # This is the correct command for Flutter projects
 
       # Run Flutter tests (optional but recommended)
       - name: Run Flutter tests
@@ -45,10 +45,3 @@ jobs:
       - name: Deploy to Firebase Hosting (Web)
         run: |
           firebase deploy --only hosting --token ${{ secrets.FIREBASE_AUTH_TOKEN }}
-
-      # Optional: Run Git cleanup commands explicitly (if necessary)
-      - name: Git Cleanup
-        run: |
-          git config --global --unset-all core.sshCommand
-          git config --global --unset-all http.https://github.com/.extraheader
-          git config --global --remove-section user
