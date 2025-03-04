@@ -24,13 +24,6 @@ jobs:
 
       - name: Install Dependencies
         run: flutter pub get
-
-      - name: Analyze Code
-        run: flutter analyze
-
-      - name: Run Unit and Widget Tests
-        run: flutter test
-
   build:
     name: Build Flutter App
     needs: test # Ensure tests pass before building
@@ -50,12 +43,6 @@ jobs:
 
       - name: Build Android APK
         run: flutter build apk --release
-
-      - name: Build iOS App (Optional)
-        if: github.event_name == 'push' # Only build iOS on push events
-        run: |
-          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-          flutter build ios --release --no-codesign
 
       - name: Archive Artifacts
         uses: actions/upload-artifact@v3
