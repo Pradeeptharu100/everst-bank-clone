@@ -1,30 +1,83 @@
-name: build-android-app
+name: Flutter CI/CD with Firebase
+
 on:
   push:
-    branches:
-      - "internal/*"
+    branches: [ "main", "develop",'master' ]
+  pull_request:
+    branches: [ "main", "develop",'mas' ]
+
 jobs:
   build:
-    runs-on: macos-latest
-    defaults:
-      run:
-        working-directory: ./android
+    runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-      - name: Setup Java
+      - uses: actions/checkout@v3
+
+      # Setup Java environment
+      - name: Set up Java
         uses: actions/setup-java@v2
         with:
-          java-version: 11
-          distribution: "adopt"
+          distribution: 'zulu'
+          java-version: '11'
 
-      - name: Download Gradle
-        run: |
-          curl -s https://get.gradle.com/ | sh
-          export PATH=$PATH:/home/runner/gradle-8.0/bin
-
+      # Setup Flutter environment
       - name: Set up Flutter
-        uses: subosito/flutter-action@v1
+        uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.27.1"
-      - run: fastlane alpha
+          flutter-version: '3.16.0'
+          channel: 'stable'
+
+      # Cache pub dependencies
+      - name: Cache pub dependencies
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.PUB_CACHE }}
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: ${{ runner.os }}-pub-
+
+      # Get dependencies
+      - name: Install dependencies
+        run: flutter pub get
+
+      # Analyze code
+      - name: Analyze code
+        run: flutter analyze
+
+      # Run tests
+      - name: Run tests
+        run: flutter test
+
+      # Build APK
+      - name: Build APK
+        run: flutter build apk --release
+
+      # Setup Firebase CLI
+      - name: Setup Firebase CLI
+        run: |
+          curl -sL https://firebase.tools | bash
+          firebase login:ci
+
+      # Deploy to Firebase (only on main branch)
+      - name: Deploy to Firebase
+        if: github.ref == 'refs/heads/main'
+        run: |
+          firebase deploy --token ${{ secrets.FIREBASE_TOKEN }}
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+      # Upload APK artifact
+      - name: Upload APK
+        uses: actions/upload-artifact@v2
+        with:
+          name: release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      # Create GitHub Release (optional)
+      - name: Create Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build/app/outputs/flutter-apk/app-release.apk
+          tag_name: v1.0.${{ github.run_number }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
